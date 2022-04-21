@@ -24,12 +24,10 @@ end
 end
 
 @generated function _offset(a::T, ::Val{X}) where {T,X}
-    # TODO
     fieldoffset(T, findfirst(isequal(Symbol("$(X)_1")), fieldnames(T)))
 end
 
 @generated function _type(a::T, ::Val{X}) where {T,X}
-    # TODO
     fieldtype(T, Symbol("$(X)_1"))
 end
 
