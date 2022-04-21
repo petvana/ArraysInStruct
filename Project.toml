@@ -1,0 +1,4 @@
+name = "ArraysInStruct"
+uuid = "671442c8-7a10-4cea-81de-c8e589438541"
+authors = ["Petr Vana <petvana@centrum.cz>"]
+version = "0.1.0"
