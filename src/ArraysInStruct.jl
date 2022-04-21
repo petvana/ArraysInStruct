@@ -82,11 +82,8 @@ macro arraysinstruct(expr)
     end
 
     T = expr.args[2]
-    if T isa Expr && T.head === :<:
-        T = T.args[1]
-    end
-    # Define getproperty
     functions = quote
+        # Update Base.getproperty to register new array fields
         function ($(esc(:(Base.getproperty))))(obj::$(esc(T)), sym::Symbol) 
             if _isarrayinstruct(obj, Val(sym))
                 TYPE = _type(obj, Val(sym))
