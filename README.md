@@ -22,7 +22,7 @@ julia> a.x[2] = 42
 
 julia> @show a.x
 a.x = UInt8[0x02, 0x2a, 0x04, 0x05]
-4-element ArraysInStruct.ArraysInStructAccessor{Foo, UInt8, :x}:
+4-element ArraysInStruct.Accesor{Foo, UInt8, :x}:
  0x02
  0x2a
  0x04

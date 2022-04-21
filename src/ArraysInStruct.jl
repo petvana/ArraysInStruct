@@ -3,7 +3,7 @@ module ArraysInStruct
 import Base: getproperty, getindex, setindex!, length, size
 export @arraysinstruct
 
-struct ArraysInStructAccessor{T, D, X}  <: AbstractArray{D,1} 
+struct Accesor{T, D, X}  <: AbstractArray{D,1} 
     ref::T
 end
 
@@ -11,11 +11,11 @@ end
     Symbol("$(X)_1") in fieldnames(T)
 end
 
-@generated function _offset(a::ArraysInStructAccessor{T, D, X}) where {T, D, X}
+@generated function _offset(a::Accesor{T, D, X}) where {T, D, X}
     fieldoffset(T, findfirst(isequal(Symbol("$(X)_1")), fieldnames(T)))
 end
 
-@generated function _length(a::ArraysInStructAccessor{T, D, X}) where {T, D, X}
+@generated function _length(a::Accesor{T, D, X}) where {T, D, X}
     len = 0
     while Symbol("$(X)_$(len+1)") in fieldnames(T)
         len += 1
@@ -31,16 +31,16 @@ end
     fieldtype(T, Symbol("$(X)_1"))
 end
 
-length(a::ArraysInStructAccessor) = _length(a)
-size(a::ArraysInStructAccessor) = (length(a),)
+length(a::Accesor) = _length(a)
+size(a::Accesor) = (length(a),)
 
-function getindex(a::ArraysInStructAccessor{T, D, X}, idx) where {T, D, X}
+function getindex(a::Accesor{T, D, X}, idx) where {T, D, X}
     @boundscheck checkbounds(a, idx)
     b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
     GC.@preserve a unsafe_load(b, idx)
 end
 
-function setindex!(a::ArraysInStructAccessor{T, D, X}, value, idx) where {T, D, X}
+function setindex!(a::Accesor{T, D, X}, value, idx) where {T, D, X}
     @boundscheck checkbounds(a, idx)
     b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
     GC.@preserve a unsafe_store!(b, value, idx)
@@ -85,13 +85,13 @@ macro arraysinstruct(expr)
         function ($(esc(:(Base.getproperty))))(obj::$(esc(T)), sym::Symbol) 
             if _isarrayinstruct(obj, Val(sym))
                 TYPE = _type(obj, Val(sym))
-                return ArraysInStructAccessor{$(esc(T)), TYPE, sym}(obj)
+                return Accesor{$(esc(T)), TYPE, sym}(obj)
             else
                 return getfield(obj, sym)
             end
         end
         # TODO constructor to initialize by array
-        #($(esc(:(f))))(a::$(esc(T)), sym::Symbol) = ArraysInStructAccessor{$(esc(T)), UInt8, sym}(a)
+        #($(esc(:(f))))(a::$(esc(T)), sym::Symbol) = Accesor{$(esc(T)), UInt8, sym}(a)
     end
 
     quote
