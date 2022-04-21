@@ -1,24 +1,6 @@
 using ArraysInStruct
 using Test
 
-@testset "imutable" begin
-    @arraysinstruct mutable struct FooI
-        a::Int
-        x[4]::UInt8
-    end
-
-    o = FooI(1, 2, 3, 4, 5)
-    @test o.a == 1
-    @test o.x[1] == 2
-    @test o.x[2] == 3
-    @test o.x[3] == 4
-    @test o.x[4] == 5
-
-    get2(o) = o.x[2]
-    get2(o) # compilation
-    @test (@allocated get2(o)) == 0
-end
-
 @testset "mutable" begin
     @arraysinstruct mutable struct FooM
         a::Int
