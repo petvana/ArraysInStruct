@@ -31,4 +31,18 @@ a.x = UInt8[0x02, 0x2a, 0x04, 0x05]
 julia> @show a.x[1]
 a.x[1] = 0x02
 0x02
+
+julia> copy(a.x)
+4-element Vector{UInt8}:
+ 0x02
+ 0x2a
+ 0x04
+ 0x05
+
+julia> a.x .= [1,2,3,6]
+4-element ArraysInStruct.Accesor{Foo, UInt8, :x}:
+ 0x01
+ 0x02
+ 0x03
+ 0x06
 ```
