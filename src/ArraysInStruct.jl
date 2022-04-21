@@ -7,7 +7,7 @@ struct ArraysInStructAccessor{T, D, X}  <: AbstractArray{D,1}
     ref::T
 end
 
-@generated function _isarrayinstruct(a::T, sym::Val{X}) where {T,X}
+@generated function _isarrayinstruct(a::T, ::Val{X}) where {T,X}
     Symbol("$(X)_1") in fieldnames(T)
 end
 
@@ -23,28 +23,28 @@ end
     return len
 end
 
+@generated function _offset(a::T, ::Val{X}) where {T,X}
+    # TODO
+    fieldoffset(T, findfirst(isequal(Symbol("$(X)_1")), fieldnames(T)))
+end
+
+@generated function _type(a::T, ::Val{X}) where {T,X}
+    # TODO
+    fieldtype(T, Symbol("$(X)_1"))
+end
+
 length(a::ArraysInStructAccessor) = _length(a)
 size(a::ArraysInStructAccessor) = (length(a),)
 
-@generated function _offset(a::T) where T
-    # TODO
-    fieldoffset(T, findfirst(isequal(Symbol("x_1")), fieldnames(T)))
-end
-
-@generated function _type(a::T) where T
-    # TODO
-    fieldtype(T, Symbol("x_1"))
-end
-
 function getindex(a::ArraysInStructAccessor{T, D, X}, idx) where {T, D, X}
     @boundscheck checkbounds(a, idx)
-    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref))
+    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
     GC.@preserve a unsafe_load(b, idx)
 end
 
 function setindex!(a::ArraysInStructAccessor{T, D, X}, value, idx) where {T, D, X}
     @boundscheck checkbounds(a, idx)
-    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref))
+    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
     GC.@preserve a unsafe_store!(b, value, idx)
 end
 
@@ -89,7 +89,7 @@ macro arraysinstruct(expr)
     functions = quote
         function ($(esc(:(Base.getproperty))))(obj::$(esc(T)), sym::Symbol) 
             if _isarrayinstruct(obj, Val(sym))
-                TYPE = _type(obj)
+                TYPE = _type(obj, Val(sym))
                 return ArraysInStructAccessor{$(esc(T)), TYPE, sym}(obj)
             else
                 return getfield(obj, sym)
