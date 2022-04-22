@@ -30,15 +30,15 @@ end
         x[4]
     end
 
-    o = FooA(1, 2, 3, 4, 5)
+    o = FooA(1, 2, 0x3, 4, 5)
     @test o.a == 1
-    @test o.x[1] == 2
-    @test o.x[2] == 3
-    @test o.x[3] == 4
-    @test o.x[4] == 5
+    @test o.x[1] === 2
+    @test o.x[2] === 0x3
+    @test o.x[3] === 4
+    @test o.x[4] === 5
 
     o.x[2] = 7
-    @test o.x[2] == 7
+    @test o.x[2] === 7
 
     @test all(o.x .== [2, 7, 4, 5])
 
