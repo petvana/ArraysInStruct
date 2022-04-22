@@ -61,12 +61,10 @@ macro arraysinstruct(expr)
                     name, count = exp[1].args
                     type = exp[2]
                 end
-            elseif true
-                if field.head == :ref
-                    isarray = true
-                    name, count = field.args
-                    type = :Any
-                end
+            elseif field.head == :ref
+                isarray = true
+                name, count = field.args
+                type = :Any
             end
         end
         if isarray
