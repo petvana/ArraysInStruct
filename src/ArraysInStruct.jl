@@ -35,15 +35,17 @@ length(a::Accesor) = _length(a)
 size(a::Accesor) = (length(a),)
 
 function getindex(a::Accesor{T, D, X}, idx) where {T, D, X}
-    @boundscheck checkbounds(a, idx)
-    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
-    GC.@preserve a unsafe_load(b, idx)
+    r = a.ref
+    GC.@preserve r @boundscheck checkbounds(a, idx)
+    GC.@preserve r b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(r) + _offset(r, Val(X)))
+    GC.@preserve r unsafe_load(b, idx)
 end
 
 function setindex!(a::Accesor{T, D, X}, value, idx) where {T, D, X}
-    @boundscheck checkbounds(a, idx)
-    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
-    GC.@preserve a unsafe_store!(b, value, idx)
+    r = a.ref
+    GC.@preserve r @boundscheck checkbounds(a, idx)
+    GC.@preserve r b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(r) + _offset(r, Val(X)))
+    GC.@preserve r unsafe_store!(b, value, idx)
 end
 
 macro arraysinstruct(expr)
@@ -60,12 +62,12 @@ macro arraysinstruct(expr)
                     isarray = true
                     name, count = exp[1].args
                     type = exp[2]
+                    isconcretetype(eval(type)) || throw("Type of $(name) must be concrete (currently is $(type))")
                 end
             elseif true
                 if field.head == :ref
-                    isarray = true
                     name, count = field.args
-                    type = :Any
+                    throw("Type of $(name) must be concrete")
                 end
             end
         end
