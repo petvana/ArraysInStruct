@@ -68,9 +68,16 @@ macro arraysinstruct(expr)
     end
 
     S = expr.args[2]
+    VA = []
+    if S isa Expr && S.head == :curly
+        for t in S.args[2:end]
+            push!(VA, :($(esc(t))))
+        end
+    end
+
     functions = quote
         # Update Base.getproperty to register new array fields
-        function ($(esc(:(Base.getproperty))))(obj::$(esc(S)), sym::Symbol) 
+        function ($(esc(:(Base.getproperty))))(obj::$(esc(S)), sym::Symbol) where {$(VA...)}
             if _isarray(obj, Val(sym))
                 TYPE = _type(obj, Val(sym))
                 return Accesor{$(esc(S)), TYPE, sym}(obj)
