@@ -3,49 +3,37 @@ module ArraysInStruct
 import Base: getproperty, getindex, setindex!, length, size
 export @arraysinstruct
 
-struct Accesor{T, D, X}  <: AbstractArray{D,1} 
-    ref::T
+struct Accesor{S,D,X}  <: AbstractArray{D,1} 
+    ref::S
 end
 
-@generated function _isarrayinstruct(a::T, ::Val{X}) where {T,X}
-    Symbol("$(X)_1") in fieldnames(T)
-end
+_symbol(basename, idx) = Symbol("$(basename)_$(idx)")
+_first(X, S) = findfirst(isequal(_symbol(X, 1)), fieldnames(S))
+@generated _offset(::S, ::Val{X}) where {S,X} = fieldoffset(S, _first(X, S))
+@generated _isarray(::S, ::Val{X}) where {S,X} = _symbol(X, 1) in fieldnames(S)
+@generated _type(::S, ::Val{X}) where {S,X} = fieldtype(S, _symbol(X, 1))
 
-@generated function _offset(a::Accesor{T, D, X}) where {T, D, X}
-    fieldoffset(T, findfirst(isequal(Symbol("$(X)_1")), fieldnames(T)))
-end
-
-@generated function _length(a::Accesor{T, D, X}) where {T, D, X}
+@generated function _length(::Accesor{S,D,X}) where {S,D,X}
     len = 0
-    while Symbol("$(X)_$(len+1)") in fieldnames(T)
+    while _symbol(X, len+1) in fieldnames(S)
         len += 1
     end
     return len
 end
 
-@generated function _offset(a::T, ::Val{X}) where {T,X}
-    fieldoffset(T, findfirst(isequal(Symbol("$(X)_1")), fieldnames(T)))
-end
-
-@generated function _type(a::T, ::Val{X}) where {T,X}
-    fieldtype(T, Symbol("$(X)_1"))
-end
-
 length(a::Accesor) = _length(a)
-size(a::Accesor) = (length(a),)
+size(a::Accesor) = (_length(a),)
 
-function getindex(a::Accesor{T, D, X}, idx) where {T, D, X}
-    r = a.ref
-    GC.@preserve r @boundscheck checkbounds(a, idx)
-    GC.@preserve r b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(r) + _offset(r, Val(X)))
-    GC.@preserve r unsafe_load(b, idx)
+function getindex(a::Accesor{S,D,X}, idx) where {S,D,X}
+    @boundscheck checkbounds(a, idx)
+    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
+    GC.@preserve a unsafe_load(b, idx)
 end
 
-function setindex!(a::Accesor{T, D, X}, value, idx) where {T, D, X}
-    r = a.ref
-    GC.@preserve r @boundscheck checkbounds(a, idx)
-    GC.@preserve r b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(r) + _offset(r, Val(X)))
-    GC.@preserve r unsafe_store!(b, value, idx)
+function setindex!(a::Accesor{S,D,X}, value, idx) where {S,D,X}
+    @boundscheck checkbounds(a, idx)
+    b = Base.unsafe_convert(Ptr{D}, pointer_from_objref(a.ref) + _offset(a.ref, Val(X)))
+    GC.@preserve a unsafe_store!(b, value, idx)
 end
 
 macro arraysinstruct(expr)
@@ -73,7 +61,7 @@ macro arraysinstruct(expr)
         end
         if isarray
             for i in 1:count
-                ex = Expr(:(::), Symbol("$(name)_$(i)"), type)
+                ex = Expr(:(::), _symbol(name, i), type)
                 push!(expr.args[3].args, ex)
             end
         else
@@ -81,19 +69,26 @@ macro arraysinstruct(expr)
         end
     end
 
-    T = expr.args[2]
+    S = expr.args[2]
+    VA = []
+    if S isa Expr && S.head == :curly
+        for t in S.args[2:end]
+            push!(VA, :($(esc(t))))
+        end
+    end
+
     functions = quote
         # Update Base.getproperty to register new array fields
-        function ($(esc(:(Base.getproperty))))(obj::$(esc(T)), sym::Symbol) 
-            if _isarrayinstruct(obj, Val(sym))
+        function ($(esc(:(Base.getproperty))))(obj::$(esc(S)), sym::Symbol) where {$(VA...)}
+            if _isarray(obj, Val(sym))
                 TYPE = _type(obj, Val(sym))
-                return Accesor{$(esc(T)), TYPE, sym}(obj)
+                return Accesor{$(esc(S)), TYPE, sym}(obj)
             else
                 return getfield(obj, sym)
             end
         end
         # TODO constructor to initialize by array
-        #($(esc(:(f))))(a::$(esc(T)), sym::Symbol) = Accesor{$(esc(T)), UInt8, sym}(a)
+        #($(esc(:(f))))(a::$(esc(S)), sym::Symbol) = Accesor{$(esc(S)), UInt8, sym}(a)
     end
 
     quote
