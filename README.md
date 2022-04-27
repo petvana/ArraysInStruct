@@ -40,3 +40,10 @@ julia> copy(o.y)
  0x04 => 5.0
  0x06 => 7.0
 ```
+### Known limitations
+
+| :exclamation:  The array types need to be of a concrete type!   |
+|-----------------------------------------|
+
+Otherwise, the GC would remove the content, leading to errors. Therefore, it is not possible to implement, for example, B-tree using this package for now.
+
